@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="jasonite",
-    version="0.1.0",
+    version="0.1.1",
     description="Jasonite: a tiny JSON-backed document store for Python",
     author="Gianni Amato",
     author_email="guelfoweb@gmail.com",
