@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import threading
 import copy
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -209,31 +210,87 @@ class Jasonite:
     # ---------- Query engine ----------
 
     def _match(self, doc: DictLike, query: Query) -> bool:
+        """
+        Check if a document matches a query.
+        Supports: $eq, $ne, $gt, $gte, $lt, $lte, $in, $nin, $exists, $contains, $regex
+        """
         for key, cond in query.items():
             val = self._get_by_path(doc, key) if not key.startswith("$") else None
+
             if isinstance(cond, dict):
                 for op, rhs in cond.items():
                     if op == "$eq":
-                        if val != rhs: return False
+                        if val != rhs:
+                            return False
                     elif op == "$ne":
-                        if val == rhs: return False
+                        if val == rhs:
+                            return False
                     elif op == "$gt":
-                        if not (val is not None and val > rhs): return False
+                        if not (val is not None and val > rhs):
+                            return False
                     elif op == "$gte":
-                        if not (val is not None and val >= rhs): return False
+                        if not (val is not None and val >= rhs):
+                            return False
                     elif op == "$lt":
-                        if not (val is not None and val < rhs): return False
+                        if not (val is not None and val < rhs):
+                            return False
                     elif op == "$lte":
-                        if not (val is not None and val <= rhs): return False
+                        if not (val is not None and val <= rhs):
+                            return False
                     elif op == "$in":
-                        if val not in rhs: return False
+                        if val not in rhs:
+                            return False
                     elif op == "$nin":
-                        if val in rhs: return False
+                        if val in rhs:
+                            return False
                     elif op == "$exists":
                         exists = val is not None
-                        if bool(rhs) != exists: return False
+                        if bool(rhs) != exists:
+                            return False
+                    elif op == "$contains":
+                        # Works for list or string
+                        if isinstance(val, list):
+                            if rhs not in val:
+                                return False
+                        elif isinstance(val, str):
+                            if rhs not in val:
+                                return False
+                        else:
+                            return False
+                    elif op == "$regex":
+                        """
+                        Regex-based text search (case-insensitive).
+
+                        The pattern is compiled only once and stored in a cache
+                        to improve performance for repeated queries using the same regex.
+
+                        Example:
+                            Query: {"Title": {"$regex": "deep learning"}}
+                            Matches: any document where Title contains "deep learning"
+                                     (case-insensitive, partial match).
+                        """
+                        if not isinstance(val, str):
+                            return False
+
+                        # Initialize regex cache on first use
+                        if not hasattr(self, "_regex_cache"):
+                            self._regex_cache = {}
+
+                        # Compile the regex only once and reuse it from cache
+                        if rhs not in self._regex_cache:
+                            try:
+                                self._regex_cache[rhs] = re.compile(rhs, re.IGNORECASE)
+                            except re.error:
+                                raise ValueError(f"Invalid regex pattern: {rhs}")
+
+                        pattern = self._regex_cache[rhs]
+
+                        # Perform case-insensitive match
+                        if not pattern.search(val):
+                            return False
+
                     else:
-                        return False
+                        raise ValueError(f"Unsupported operator: {op}")
             else:
                 if val != cond:
                     return False
