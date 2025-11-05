@@ -94,6 +94,25 @@ class Jasonite:
             col.append(self._deepcopy(doc))
             self._maybe_flush()
 
+    def update(self, collection: str, query: Query, new_values: DictLike) -> int:
+        """
+        Update all documents matching the query with the given new values.
+        Returns the number of documents updated.
+
+        Example:
+            db.update("spid", {"id": "id"}, {"key": "value"})
+        """
+        updated = 0
+        with self._lock:
+            self._ensure_collection(collection)
+            for doc in self._data[collection]:
+                if all(doc.get(k) == v for k, v in query.items()):
+                    doc.update(new_values)
+                    updated += 1
+            if updated and self.autosave:
+                self._save()
+        return updated
+
     def save(self, collection: str, doc: DictLike):
         """Insert or replace a document."""
         with self._lock:
