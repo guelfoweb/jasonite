@@ -100,7 +100,7 @@ class Jasonite:
         Returns the number of documents updated.
 
         Example:
-            db.update("spid", {"id": "id"}, {"key": "value"})
+            db.update("collection", {"id": "id"}, {"key": "value"})
         """
         updated = 0
         with self._lock:
