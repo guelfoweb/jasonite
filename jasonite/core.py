@@ -110,7 +110,7 @@ class Jasonite:
                     doc.update(new_values)
                     updated += 1
             if updated and self.autosave:
-                self._save()
+                self.flush()
         return updated
 
     def save(self, collection: str, doc: DictLike):
